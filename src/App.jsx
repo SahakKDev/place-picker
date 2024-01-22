@@ -6,38 +6,14 @@ import Modal from './components/Modal.jsx';
 import DeleteConfirmation from './components/DeleteConfirmation.jsx';
 import logoImg from './assets/logo.png';
 import { sortPlacesByDistance } from './loc.js';
-
-const initPickedPlaces = () => {
-  const pickedPlacesIds =
-    JSON.parse(localStorage.getItem('selectedPlaces')) || [];
-
-  return pickedPlacesIds.map((id) =>
-    AVAILABLE_PLACES.find((place) => place.id === id),
-  );
-};
+import AvailablePlaces from './components/AvailablePlaces.jsx';
 
 function App() {
   const selectedPlace = useRef();
 
+  const [userPlaces, setUserPlaces] = useState([]);
+
   const [IsOpenModal, setIsOpenModal] = useState(false);
-  const [availablePlaces, setAvailablePlaces] = useState([]);
-  const [pickedPlaces, setPickedPlaces] = useState(initPickedPlaces);
-
-  useEffect(() => {
-    navigator.geolocation.getCurrentPosition((position) => {
-      const {
-        coords: { latitude, longitude },
-      } = position;
-
-      const sortedPlaces = sortPlacesByDistance(
-        AVAILABLE_PLACES,
-        latitude,
-        longitude,
-      );
-
-      setAvailablePlaces(sortedPlaces);
-    });
-  }, []);
 
   function handleStartRemovePlace(id) {
     setIsOpenModal(true);
@@ -48,36 +24,25 @@ function App() {
     setIsOpenModal(false);
   }
 
-  function handleSelectPlace(id) {
-    setPickedPlaces((prevPickedPlaces) => {
-      if (prevPickedPlaces.some((place) => place.id === id)) {
+  function handleSelectPlace(selectedPlace) {
+    setUserPlaces((prevPickedPlaces) => {
+      if (!prevPickedPlaces) {
+        prevPickedPlaces = [];
+      }
+
+      if (prevPickedPlaces.some((place) => place.id === selectedPlace.id)) {
         return prevPickedPlaces;
       }
-      const place = AVAILABLE_PLACES.find((place) => place.id === id);
-      return [place, ...prevPickedPlaces];
-    });
 
-    const storedIds = JSON.parse(localStorage.getItem('selectedPlaces')) || [];
-    if (storedIds.indexOf(id) === -1) {
-      localStorage.setItem(
-        'selectedPlaces',
-        JSON.stringify([id, ...storedIds]),
-      );
-    }
+      return [selectedPlace, ...prevPickedPlaces];
+    });
   }
 
   const handleRemovePlace = useCallback(function handleRemovePlace() {
-    setPickedPlaces((prevPickedPlaces) =>
-      prevPickedPlaces.filter((place) => place.id !== selectedPlace.current),
+    setUserPlaces((prevPickedPlaces) =>
+      prevPickedPlaces.filter((place) => place.id !== selectedPlace.current.id),
     );
     setIsOpenModal(false);
-
-    const storedIds = JSON.parse(localStorage.getItem('selectedPlaces')) || [];
-
-    localStorage.setItem(
-      'selectedPlaces',
-      JSON.stringify(storedIds.filter((id) => id !== selectedPlace.current)),
-    );
   }, []);
 
   return (
@@ -101,15 +66,10 @@ function App() {
         <Places
           title="I'd like to visit ..."
           fallbackText="Select the places you would like to visit below."
-          places={pickedPlaces}
+          places={userPlaces}
           onSelectPlace={handleStartRemovePlace}
         />
-        <Places
-          title="Available Places"
-          fallbackText="Sorting places by distance..."
-          places={availablePlaces}
-          onSelectPlace={handleSelectPlace}
-        />
+        <AvailablePlaces onSelectPlace={handleSelectPlace} />
       </main>
     </>
   );
